@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>生活英语 5000 句</title>
+<style>
+:root{--bg:#FBF9F4;--ink:#221F1B;--grey:#8A8378;--line:#E5DFD3;--acc:#2E8B6B}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--ink)}
+header{position:sticky;top:0;background:var(--bg);padding:14px 16px 10px;border-bottom:1px solid var(--line);z-index:5}
+h1{font-size:19px;margin:0 0 8px}
+.tabs{display:flex;gap:8px}
+.tab{flex:1;text-align:center;padding:8px 0;border:1px solid var(--line);border-radius:10px;font-size:14px;background:#fff}
+.tab.on{background:var(--acc);color:#fff;border-color:var(--acc)}
+#search{width:100%;margin-top:8px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;font-size:15px;background:#fff}
+main{padding:12px 14px 60px}
+.cat{display:flex;justify-content:space-between;align-items:center;background:#fff;border:1px solid var(--line);border-radius:12px;padding:13px 14px;margin-bottom:9px}
+.cat b{font-size:15.5px;font-weight:600}
+.cat span{color:var(--grey);font-size:12.5px}
+.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:13px 14px;margin-bottom:9px}
+.en{font-size:16.5px;line-height:1.55}
+.en b{color:var(--acc)}
+.zh{color:var(--grey);font-size:13.5px;margin-top:6px;line-height:1.5}
+.zh.hide{filter:blur(5px)}
+.meta{display:flex;justify-content:space-between;margin-top:8px;align-items:center}
+.meta small{color:var(--grey);font-size:11.5px}
+.star{font-size:18px;color:#D8D2C6;border:none;background:none;padding:0}
+.star.on{color:#E5A33B}
+.spk{font-size:17px;border:none;background:none;padding:0 8px 0 0;color:var(--acc)}
+.card.playing{border-color:var(--acc);box-shadow:0 0 0 2px rgba(46,139,107,.18)}
+.bar{display:flex;gap:8px;align-items:center;margin:4px 0 12px}
+.btn{padding:8px 14px;border-radius:10px;border:1px solid var(--acc);color:var(--acc);background:#fff;font-size:13.5px}
+.btn.solid{background:var(--acc);color:#fff}
+.back{color:var(--acc);font-size:14px;margin-bottom:10px;display:inline-block}
+.hint{color:var(--grey);font-size:12.5px;text-align:center;margin:16px 0}
+progress{width:100%;height:6px;accent-color:var(--acc)}
+</style></head><body>
+<header><h1>生活英语 5000 句 · 中式家庭版</h1>
+<div class="tabs">
+<div class="tab on" data-m="cats">分类学习</div>
+<div class="tab" data-m="daily">每日30句</div>
+<div class="tab" data-m="star">生词本</div>
+</div>
+<input id="search" placeholder="搜索英文或中文，如：饺子 / how much">
+</header><main id="app"></main>
+<script src="data.js"></script>
+<script>
+const D=window.DATA, app=document.getElementById('app');
+const cats=[...new Set(D.map(s=>s.c))];
+const K='le5k_';
+const get=k=>{try{return JSON.parse(localStorage.getItem(K+k))}catch(e){return null}};
+const set=(k,v)=>{try{localStorage.setItem(K+k,JSON.stringify(v))}catch(e){}};
+let stars=new Set(get('stars')||[]), hideZh=get('hide')||false, mode='cats';
+const bold=e=>e.replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/</g,m=>m).replace(/&lt;b&gt;/g,'<b>').replace(/&lt;\/b&gt;/g,'</b>');
+function esc(t){return t.replace(/&/g,'&amp;').replace(/</g,'&lt;')}
+function ren(e){return esc(e).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>')}
+function card(s,i){const id=s.e;
+return `<div class="card" data-en="${encodeURIComponent(s.e)}"><div class="en" onclick="speakCard(this.parentNode)">${ren(s.e)}</div>
+<div class="zh ${hideZh?'hide':''}" onclick="this.classList.toggle('hide')">${esc(s.z)}</div>
+<div class="meta"><small>${s.c}</small><span>
+<button class="spk" onclick="speakCard(this.closest('.card'))">\u{1F50A}</button><button class="star ${stars.has(id)?'on':''}" onclick="tog(this,'${encodeURIComponent(id)}')">★</button></span></div></div>`}
+window.tog=(el,id)=>{id=decodeURIComponent(id);stars.has(id)?stars.delete(id):stars.add(id);el.classList.toggle('on');set('stars',[...stars])};
+function bar(){return `<div class="bar"><button class="btn ${hideZh?'solid':''}" onclick="hz()">${hideZh?'显示中文':'遮住中文·自测'}</button><button class="btn" onclick="rate()">语速 ${spd===0.75?'慢':'正常'}</button><button class="btn ${playingAll?'solid':''}" onclick="playAll(this)">${playingAll?'停止朗读':'连续朗读本页'}</button></div>`}
+window.hz=()=>{hideZh=!hideZh;set('hide',hideZh);draw()};
+function draw(q){
+ q=(q||document.getElementById('search').value||'').trim().toLowerCase();
+ if(q){const r=D.filter(s=>s.e.toLowerCase().includes(q)||s.z.includes(q)).slice(0,120);
+  app.innerHTML=bar()+`<div class="hint">找到 ${r.length} 句（最多显示120）</div>`+r.map(card).join('');return}
+ if(mode==='cats'&&!cur){app.innerHTML=cats.map(c=>{const n=D.filter(s=>s.c===c).length;
+  return `<div class="cat" onclick="openCat('${encodeURIComponent(c)}')"><b>${c}</b><span>${n} 句 ›</span></div>`}).join('');return}
+ if(mode==='cats'&&cur){const l=D.filter(s=>s.c===cur);
+  app.innerHTML=`<a class="back" onclick="cur=null;draw()">‹ 全部分类</a>`+bar()+l.map(card).join('');window.scrollTo(0,0);return}
+ if(mode==='daily'){const day=new Date().toISOString().slice(0,10);
+  let idx=get('d_'+day);if(!idx){idx=[];const used=new Set();let seed=day.split('-').join('')*1;
+   const rnd=()=>{seed=(seed*9301+49297)%233280;return seed/233280};
+   while(idx.length<30){const i=Math.floor(rnd()*D.length);if(!used.has(i)){used.add(i);idx.push(i)}}
+   set('d_'+day,idx)}
+  const done=get('done_'+day)||0;
+  app.innerHTML=`<div class="hint">今日练习 · ${day} · 读完一句点星标收藏生词</div><progress max="30" value="${done}"></progress>`+bar()+idx.map(i=>card(D[i])).join('')
+   +`<div class="hint" onclick="set('done_'+'${day}',30);draw()">✓ 点这里标记今日完成</div>`;return}
+ if(mode==='star'){const l=D.filter(s=>stars.has(s.e));
+  app.innerHTML=(l.length?bar()+l.map(card).join(''):'<div class="hint">还没有收藏。点句子右下角的 ★ 加入生词本。</div>')}
+}
+let cur=null, spd=get('spd')||1.0, playingAll=false, enVoice=null;
+function pickVoice(){const vs=speechSynthesis.getVoices();
+ enVoice=vs.find(v=>/en[-_](US|GB)/i.test(v.lang)&&/female|Samantha|Google US/i.test(v.name))||vs.find(v=>/^en/i.test(v.lang))||null}
+if('speechSynthesis' in window){pickVoice();speechSynthesis.onvoiceschanged=pickVoice}
+function speakText(t,cb){if(!('speechSynthesis' in window)){alert('此浏览器不支持朗读，请用 Chrome / Safari');return}
+ const u=new SpeechSynthesisUtterance(t.replace(/\*\*/g,''));
+ u.lang='en-US';if(enVoice)u.voice=enVoice;u.rate=spd;u.onend=()=>cb&&cb();
+ speechSynthesis.cancel();speechSynthesis.speak(u)}
+window.speakCard=el=>{stopAll();document.querySelectorAll('.card.playing').forEach(c=>c.classList.remove('playing'));
+ el.classList.add('playing');
+ speakText(decodeURIComponent(el.dataset.en),()=>el.classList.remove('playing'))};
+window.rate=()=>{spd=spd===0.75?1.0:0.75;set('spd',spd);draw()};
+function stopAll(){playingAll=false;speechSynthesis&&speechSynthesis.cancel()}
+window.playAll=()=>{if(playingAll){stopAll();draw();return}
+ const cards=[...document.querySelectorAll('.card')];if(!cards.length)return;
+ playingAll=true;draw();
+ const list=[...document.querySelectorAll('.card')];let i=0;
+ const next=()=>{if(!playingAll||i>=list.length){stopAll();draw();return}
+  list.forEach(c=>c.classList.remove('playing'));const el=list[i];el.classList.add('playing');
+  el.scrollIntoView({block:'center',behavior:'smooth'});
+  speakText(decodeURIComponent(el.dataset.en),()=>{i++;setTimeout(next,450)})};
+ next()};
+window.openCat=c=>{stopAll();cur=decodeURIComponent(c);draw()};
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));t.classList.add('on');stopAll();mode=t.dataset.m;cur=null;document.getElementById('search').value='';draw()});
+document.getElementById('search').addEventListener('input',()=>draw());
+draw();
+</script></body></html>
